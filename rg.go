@@ -28,6 +28,9 @@ type RipgrepArgs struct {
 	WordRegexp    bool
 }
 
+// Ripgrep runs a ripgrep operation using the provided jasper
+// returning an iterator of the full path names of any file that
+// ripgrep finds that matches regexp provided.
 func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Iterator[string] {
 	args.Path = util.TryExpandHomedir(args.Path)
 	var buf bytes.Buffer

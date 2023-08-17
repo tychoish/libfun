@@ -4,11 +4,17 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/erc"
+	"github.com/tychoish/fun/ft"
 )
+
+// FileExists provies a function that "reads" correctly with the
+// usually required semantics for "does this file exist."
+func FileExists(path string) bool { return ft.Not(os.IsNotExist(ft.IgnoreFirst(os.Stat(path)))) }
 
 // WalkDirIterator provides an alternate fun.Iterator-based interface
 // to filepath.WalkDir. The filepath.WalkDir runs in a go routnine,

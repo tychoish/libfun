@@ -3,8 +3,8 @@ module github.com/tychoish/libfun
 go 1.21.0
 
 require (
-	github.com/tychoish/fun v0.10.3
-	github.com/tychoish/grip v0.3.5
+	github.com/tychoish/fun v0.10.6
+	github.com/tychoish/grip v0.3.7-0.20230829230451-7df5f5ab84f7
 	github.com/tychoish/jasper v0.1.2-0.20230815182358-1aa186f0f2c9
 )
 

@@ -70,7 +70,7 @@ func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Ite
 			return filepath.Dir(in)
 		}
 		return in
-	}).Convert(fun.HF.Lines(&buf))
+	}).Process(fun.HF.Lines(&buf))
 	iter.AddError(err)
 
 	if args.Unique {

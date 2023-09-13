@@ -31,6 +31,9 @@ type RipgrepArgs struct {
 // Ripgrep runs a ripgrep operation using the provided jasper
 // returning an iterator of the full path names of any file that
 // ripgrep finds that matches regexp provided.
+//
+// The iterator only provides access to the fully qualified filenames
+// not the contents of the operation.
 func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Iterator[string] {
 	args.Path = util.TryExpandHomedir(args.Path)
 	var buf bytes.Buffer
@@ -54,7 +57,6 @@ func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Ite
 	cmd.AppendWhen(args.IgnoreFile != "", "--ignore-file", args.IgnoreFile)
 	cmd.AppendWhen(args.Zip, "--search-zip")
 	cmd.AppendWhen(args.WordRegexp, "--word-regexp")
-
 	cmd.Append("--regexp", args.Regexp)
 
 	err := jpm.CreateCommand(ctx).

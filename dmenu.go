@@ -28,9 +28,7 @@ type DMenuCommand struct {
 	Configuration *godmenu.DMenuConfiguration
 }
 
-const (
-	ErrUndefinedOperation ers.Error = "undefined operation"
-)
+const ErrUndefinedOperation ers.Error = "undefined operation"
 
 // DMenu takes a *DMenuCommand operation and returns a Worker that
 // when executed will call one or more DMenu selections and

@@ -50,8 +50,8 @@ func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Ite
 		"--trim",
 	}
 
-	dt.Sliceify(args.Types).Observe(func(t string) { cmd.Append("--type", t) })
-	dt.Sliceify(args.ExcludedTypes).Observe(func(t string) { cmd.Append("--type-not", t) })
+	dt.NewSlice(args.Types).Observe(func(t string) { cmd.Append("--type", t) })
+	dt.NewSlice(args.ExcludedTypes).Observe(func(t string) { cmd.Append("--type-not", t) })
 
 	cmd.AppendWhen(args.Invert, "--invert-match")
 	cmd.AppendWhen(args.IgnoreFile != "", "--ignore-file", args.IgnoreFile)

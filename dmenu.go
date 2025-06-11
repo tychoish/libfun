@@ -50,20 +50,20 @@ func DMenu(cmd *DMenuCommand) fun.Worker {
 				return nil
 			}
 
-			cmd, err = cmd.wrap().Resolve(ctx)
+			cmd, err = cmd.wrap()(ctx)
 		}
 	}
 }
 
 func (cmd *DMenuCommand) nextID() string { return fmt.Sprint(cmd.Stage, ".next") }
 
-func (cmd *DMenuCommand) wrap() fun.Producer[*DMenuCommand] {
+func (cmd *DMenuCommand) wrap() fun.Generator[*DMenuCommand] {
 	return func(ctx context.Context) (*DMenuCommand, error) {
 		if len(cmd.Selections) == 0 {
-			return nil, ers.Wrap(ErrUndefinedOperation, "selections", cmd.Stage)
+			return nil, ers.Wrapf(ErrUndefinedOperation, "selections: %q", cmd.Stage)
 		}
 		if cmd.NextHandle == nil {
-			return nil, ers.Wrap(ErrUndefinedOperation, "handler", cmd.Stage)
+			return nil, ers.Wrapf(ErrUndefinedOperation, "handler: %q", cmd.Stage)
 		}
 
 		selection, err := godmenu.RunDMenu(ctx, godmenu.Options{

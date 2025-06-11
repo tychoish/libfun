@@ -7,6 +7,7 @@ import (
 
 	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/dt"
+	"github.com/tychoish/fun/ft"
 	"github.com/tychoish/fun/itertool"
 	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/level"
@@ -34,7 +35,7 @@ type RipgrepArgs struct {
 //
 // The iterator only provides access to the fully qualified filenames
 // not the contents of the operation.
-func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Iterator[string] {
+func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Stream[string] {
 	args.Path = util.TryExpandHomedir(args.Path)
 	var buf bytes.Buffer
 	sender := send.MakeBytesBuffer(&buf)
@@ -50,13 +51,13 @@ func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Ite
 		"--trim",
 	}
 
-	dt.NewSlice(args.Types).Observe(func(t string) { cmd.Append("--type", t) })
-	dt.NewSlice(args.ExcludedTypes).Observe(func(t string) { cmd.Append("--type-not", t) })
+	dt.NewSlice(args.Types).ReadAll(func(t string) { cmd.Append("--type", t) })
+	dt.NewSlice(args.ExcludedTypes).ReadAll(func(t string) { cmd.Append("--type-not", t) })
 
-	cmd.AppendWhen(args.Invert, "--invert-match")
-	cmd.AppendWhen(args.IgnoreFile != "", "--ignore-file", args.IgnoreFile)
-	cmd.AppendWhen(args.Zip, "--search-zip")
-	cmd.AppendWhen(args.WordRegexp, "--word-regexp")
+	ft.ApplyWhen(args.Invert, cmd.Add, "--invert-match")
+	ft.ApplyWhen(args.IgnoreFile != "", cmd.Extend, []string{"--ignore-file", args.IgnoreFile})
+	ft.ApplyWhen(args.Zip, cmd.Add, "--search-zip")
+	ft.ApplyWhen(args.WordRegexp, cmd.Add, "--word-regexp")
 	cmd.Append("--regexp", args.Regexp)
 
 	err := jpm.CreateCommand(ctx).
@@ -66,13 +67,14 @@ func Ripgrep(ctx context.Context, jpm jasper.Manager, args RipgrepArgs) *fun.Ite
 		SetErrorSender(level.Error, grip.Sender()).
 		Run(ctx)
 
-	iter := fun.Converter(func(in string) string {
+	iter := fun.MakeConverter(func(in string) string {
 		in = filepath.Join(args.Path, in)
 		if args.Directories {
 			return filepath.Dir(in)
 		}
 		return in
-	}).Process(fun.HF.Lines(&buf))
+	}).Stream(fun.MAKE.Lines(&buf))
+
 	iter.AddError(err)
 
 	if args.Unique {

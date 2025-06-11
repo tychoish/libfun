@@ -24,13 +24,13 @@ func FileExists(path string) bool { return ft.Not(os.IsNotExist(ft.IgnoreFirst(o
 // If the first value of the walk function is nil, then the item is
 // skipped the walk will continue, otherwise--assuming that the error
 // is non-nil, it is de-referenced and returned by the iterator.
-func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, error)) *fun.Iterator[T] {
+func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, error)) *fun.Stream[T] {
 	ec := &erc.Collector{}
 
 	pipe := fun.Blocking(make(chan T))
-	send := pipe.Processor()
+	send := pipe.Handler()
 
-	return pipe.Producer().
+	return pipe.Generator().
 		PreHook(fun.Worker(
 			func(ctx context.Context) error {
 				return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
@@ -39,15 +39,18 @@ func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, e
 					}
 
 					out, err := fn(p, d)
-					if err != nil || out == nil {
-						erc.When(ec, !ers.Is(err, fs.SkipDir, fs.SkipAll), err)
+					if err != nil {
+						ec.When(!ers.Is(err, fs.SkipDir, fs.SkipAll), err)
 						return err
+					}
+					if out == nil {
+						return nil
 					}
 					return send(ctx, *out)
 				})
 			}).
-			Operation(fun.HF.ErrorHandlerWithoutTerminating(ec.Add)).
+			Operation(fun.MAKE.ErrorHandlerWithoutTerminating(ec.Push)).
 			PostHook(pipe.Close).
 			Go().Once(),
-		).IteratorWithHook(erc.IteratorHook[T](ec))
+		).Stream().WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
 }

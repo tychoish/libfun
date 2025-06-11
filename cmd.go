@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/tychoish/fun"
-	"github.com/tychoish/fun/ers"
+	"github.com/tychoish/fun/erc"
 	"github.com/tychoish/grip/level"
 	"github.com/tychoish/grip/send"
 	"github.com/tychoish/jasper"
@@ -23,7 +23,7 @@ func (e *ErrOutput) Error() string {
 	return fmt.Sprintf("cmd: %q; output: %q; error: %q", e.Cmd, e.Out, e.Err)
 }
 
-func RunCommand(ctx context.Context, cmd string) *fun.Iterator[string] {
+func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
 	var stdoutBuf bytes.Buffer
 	stdout := send.MakeBytesBuffer(&stdoutBuf)
 	stdout.SetPriority(level.Info)
@@ -41,16 +41,16 @@ func RunCommand(ctx context.Context, cmd string) *fun.Iterator[string] {
 		Run(ctx)
 
 	if err != nil {
-		return fun.MakeProducer(func() (string, error) {
-			return "", ers.Join(err, &ErrOutput{Cmd: cmd, Err: stderrBuf.String(),
+		return fun.MakeGenerator(func() (string, error) {
+			return "", erc.Join(err, &ErrOutput{Cmd: cmd, Err: stderrBuf.String(),
 				Out: stdoutBuf.String()})
-		}).Iterator()
+		}).Stream()
 	}
 
-	return fun.HF.Lines(&stdoutBuf)
+	return fun.MAKE.Lines(&stdoutBuf)
 }
 
-func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.Iterator[string] {
+func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.Stream[string] {
 	var stdoutBuf bytes.Buffer
 	stdout := send.MakeBytesBuffer(&stdoutBuf)
 	stdout.SetPriority(level.Info)
@@ -69,11 +69,11 @@ func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.
 		Run(ctx)
 
 	if err != nil {
-		return fun.MakeProducer(func() (string, error) {
-			return "", ers.Join(err, &ErrOutput{Cmd: cmd, Err: stderrBuf.String(),
+		return fun.MakeGenerator(func() (string, error) {
+			return "", erc.Join(err, &ErrOutput{Cmd: cmd, Err: stderrBuf.String(),
 				Out: stdoutBuf.String()})
-		}).Iterator()
+		}).Stream()
 	}
 
-	return fun.HF.Lines(&stdoutBuf)
+	return fun.MAKE.Lines(&stdoutBuf)
 }

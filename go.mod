@@ -1,12 +1,14 @@
 module github.com/tychoish/libfun
 
-go 1.21.0
+go 1.24
+
+toolchain go1.24.3
 
 require (
-	github.com/tychoish/fun v0.10.7
+	github.com/tychoish/fun v0.12.0
 	github.com/tychoish/godmenu v0.1.2
-	github.com/tychoish/grip v0.3.7-0.20230830203959-0c04e83ea624
-	github.com/tychoish/jasper v0.1.2-0.20230815182358-1aa186f0f2c9
+	github.com/tychoish/grip v0.4.0
+	github.com/tychoish/jasper v0.1.2
 )
 
 require (

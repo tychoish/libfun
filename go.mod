@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/tychoish/fun v0.12.0
-	github.com/tychoish/godmenu v0.1.3-0.20250702205301-21d0535588b2
+	github.com/tychoish/godmenu v0.1.3-0.20250702210058-8c9f0e1d9116
 	github.com/tychoish/grip v0.4.0
 	github.com/tychoish/jasper v0.1.2
 )

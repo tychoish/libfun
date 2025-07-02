@@ -8,9 +8,8 @@ import (
 
 	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/erc"
-	"github.com/tychoish/grip/level"
-	"github.com/tychoish/grip/send"
 	"github.com/tychoish/jasper"
+	"github.com/tychoish/jasper/util"
 )
 
 type ErrOutput struct {
@@ -25,19 +24,13 @@ func (e *ErrOutput) Error() string {
 
 func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
 	var stdoutBuf bytes.Buffer
-	stdout := send.MakeBytesBuffer(&stdoutBuf)
-	stdout.SetPriority(level.Info)
-	stdout.SetName("stdout")
-
 	var stderrBuf bytes.Buffer
-	stderr := send.MakeBytesBuffer(&stderrBuf)
-	stderr.SetPriority(level.Info)
-	stderr.SetName("stderr")
+
 	err := jasper.Context(ctx).
 		CreateCommand(ctx).
 		Append(cmd).
-		SetOutputSender(level.Info, stdout).
-		SetErrorSender(level.Info, stderr).
+		SetOutputWriter(util.NewLocalBuffer(stdoutBuf)).
+		SetErrorWriter(util.NewLocalBuffer(stderrBuf)).
 		Run(ctx)
 
 	if err != nil {
@@ -52,19 +45,13 @@ func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
 
 func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.Stream[string] {
 	var stdoutBuf bytes.Buffer
-	stdout := send.MakeBytesBuffer(&stdoutBuf)
-	stdout.SetPriority(level.Info)
-	stdout.SetName("stdout")
-
 	var stderrBuf bytes.Buffer
-	stderr := send.MakeBytesBuffer(&stderrBuf)
-	stderr.SetPriority(level.Info)
-	stderr.SetName("stderr")
+
 	err := jasper.Context(ctx).
 		CreateCommand(ctx).
 		Append(cmd).
-		SetOutputSender(level.Info, stdout).
-		SetErrorSender(level.Info, stderr).
+		SetOutputWriter(util.NewLocalBuffer(stdoutBuf)).
+		SetErrorWriter(util.NewLocalBuffer(stderrBuf)).
 		SetInput(stdin).
 		Run(ctx)
 

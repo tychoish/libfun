@@ -22,10 +22,10 @@ type DMenuCommand struct {
 	NextHandle func(ctx context.Context, selection string) (*DMenuCommand, error)
 	// Stage is a human readable name for this command.
 	Stage string
-	// Configuration is optional and defaults to the
+	// Flags is optional and defaults to the
 	// godmenu.DMenuConfiguration default values *or* the value
 	// provided by the previous level.
-	Configuration *godmenu.DMenuConfiguration
+	Configuration *godmenu.Flags
 }
 
 const ErrUndefinedOperation ers.Error = "undefined operation"
@@ -66,9 +66,9 @@ func (cmd *DMenuCommand) wrap() fun.Generator[*DMenuCommand] {
 			return nil, ers.Wrapf(ErrUndefinedOperation, "handler: %q", cmd.Stage)
 		}
 
-		selection, err := godmenu.RunDMenu(ctx, godmenu.Options{
+		selection, err := godmenu.Do(ctx, godmenu.Configuration{
 			Selections: cmd.Selections,
-			DMenu:      cmd.Configuration,
+			Flags:      cmd.Configuration,
 		})
 		if err != nil {
 			return nil, ers.Wrap(err, cmd.Stage)
@@ -89,14 +89,14 @@ func (cmd *DMenuCommand) wrap() fun.Generator[*DMenuCommand] {
 	}
 }
 
-func MenuOperation(ctx context.Context, om map[string]fun.Worker, conf *godmenu.DMenuConfiguration) error {
+func MenuOperation(ctx context.Context, om map[string]fun.Worker, conf *godmenu.Flags) error {
 	mp := dt.NewMap(om)
 	keys, err := mp.Keys().Slice(ctx)
 	if err != nil {
 		return err
 	}
 
-	selection, err := godmenu.RunDMenu(ctx, godmenu.Options{Selections: keys, DMenu: conf})
+	selection, err := godmenu.Do(ctx, godmenu.Configuration{Selections: keys, Flags: conf})
 	if err != nil {
 		return err
 	}

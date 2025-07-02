@@ -35,7 +35,7 @@ func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, e
 			func(ctx context.Context) error {
 				return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
 					if err != nil {
-						return fs.SkipAll
+						return err
 					}
 
 					out, err := fn(p, d)

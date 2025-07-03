@@ -66,7 +66,7 @@ func (cmd *DMenuCommand) wrap() fun.Generator[*DMenuCommand] {
 			return nil, ers.Wrapf(ErrUndefinedOperation, "handler: %q", cmd.Stage)
 		}
 
-		selection, err := godmenu.Do(ctx, godmenu.Configuration{
+		selection, err := godmenu.Do(ctx, godmenu.Options{
 			Selections: cmd.Selections,
 			Flags:      cmd.Configuration,
 		})
@@ -96,7 +96,7 @@ func MenuOperation(ctx context.Context, om map[string]fun.Worker, conf *godmenu.
 		return err
 	}
 
-	selection, err := godmenu.Do(ctx, godmenu.Configuration{Selections: keys, Flags: conf})
+	selection, err := godmenu.Do(ctx, godmenu.Options{Selections: keys, Flags: conf})
 	if err != nil {
 		return err
 	}

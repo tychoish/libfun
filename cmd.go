@@ -29,8 +29,8 @@ func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
 	err := jasper.Context(ctx).
 		CreateCommand(ctx).
 		Append(cmd).
-		SetOutputWriter(util.NewLocalBuffer(stdoutBuf)).
-		SetErrorWriter(util.NewLocalBuffer(stderrBuf)).
+		SetOutputWriter(util.NewLocalBuffer(&stdoutBuf)).
+		SetErrorWriter(util.NewLocalBuffer(&stderrBuf)).
 		Run(ctx)
 
 	if err != nil {
@@ -50,8 +50,8 @@ func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.
 	err := jasper.Context(ctx).
 		CreateCommand(ctx).
 		Append(cmd).
-		SetOutputWriter(util.NewLocalBuffer(stdoutBuf)).
-		SetErrorWriter(util.NewLocalBuffer(stderrBuf)).
+		SetOutputWriter(util.NewLocalBuffer(&stdoutBuf)).
+		SetErrorWriter(util.NewLocalBuffer(&stderrBuf)).
 		SetInput(stdin).
 		Run(ctx)
 

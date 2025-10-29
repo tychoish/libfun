@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/dt"
 	"github.com/tychoish/fun/ers"
+	"github.com/tychoish/fun/fnx"
 	"github.com/tychoish/fun/ft"
 	"github.com/tychoish/godmenu"
 )
@@ -33,7 +33,7 @@ const ErrUndefinedOperation ers.Error = "undefined operation"
 // DMenu takes a *DMenuCommand operation and returns a Worker that
 // when executed will call one or more DMenu selections and
 // operations.
-func DMenu(cmd *DMenuCommand) fun.Worker {
+func DMenu(cmd *DMenuCommand) fnx.Worker {
 	cmd.Stage = ft.Default(cmd.Stage, "root")
 
 	return func(ctx context.Context) (err error) {
@@ -57,7 +57,7 @@ func DMenu(cmd *DMenuCommand) fun.Worker {
 
 func (cmd *DMenuCommand) nextID() string { return fmt.Sprint(cmd.Stage, ".next") }
 
-func (cmd *DMenuCommand) wrap() fun.Generator[*DMenuCommand] {
+func (cmd *DMenuCommand) wrap() fnx.Future[*DMenuCommand] {
 	return func(ctx context.Context) (*DMenuCommand, error) {
 		if len(cmd.Selections) == 0 {
 			return nil, ers.Wrapf(ErrUndefinedOperation, "selections: %q", cmd.Stage)
@@ -89,7 +89,7 @@ func (cmd *DMenuCommand) wrap() fun.Generator[*DMenuCommand] {
 	}
 }
 
-func MenuOperation(ctx context.Context, om map[string]fun.Worker, conf *godmenu.Flags) error {
+func MenuOperation(ctx context.Context, om map[string]fnx.Worker, conf *godmenu.Flags) error {
 	mp := dt.NewMap(om)
 	keys, err := mp.Keys().Slice(ctx)
 	if err != nil {

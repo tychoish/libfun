@@ -8,6 +8,7 @@ import (
 
 	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/erc"
+	"github.com/tychoish/fun/fnx"
 	"github.com/tychoish/jasper"
 	"github.com/tychoish/jasper/util"
 )
@@ -32,12 +33,13 @@ func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
 		SetOutputWriter(util.NewLocalBuffer(&stdoutBuf)).
 		SetErrorWriter(util.NewLocalBuffer(&stderrBuf)).
 		Run(ctx)
-
 	if err != nil {
-		return fun.MakeGenerator(func() (string, error) {
-			return "", erc.Join(err, &ErrOutput{Cmd: cmd, Err: stderrBuf.String(),
-				Out: stdoutBuf.String()})
-		}).Stream()
+		return fun.MakeStream(fnx.MakeFuture(func() (string, error) {
+			return "", erc.Join(err, &ErrOutput{
+				Cmd: cmd, Err: stderrBuf.String(),
+				Out: stdoutBuf.String(),
+			})
+		}))
 	}
 
 	return fun.MAKE.Lines(&stdoutBuf)
@@ -54,12 +56,13 @@ func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.
 		SetErrorWriter(util.NewLocalBuffer(&stderrBuf)).
 		SetInput(stdin).
 		Run(ctx)
-
 	if err != nil {
-		return fun.MakeGenerator(func() (string, error) {
-			return "", erc.Join(err, &ErrOutput{Cmd: cmd, Err: stderrBuf.String(),
-				Out: stdoutBuf.String()})
-		}).Stream()
+		return fun.MakeStream(fnx.MakeFuture(func() (string, error) {
+			return "", erc.Join(err, &ErrOutput{
+				Cmd: cmd, Err: stderrBuf.String(),
+				Out: stdoutBuf.String(),
+			})
+		}))
 	}
 
 	return fun.MAKE.Lines(&stdoutBuf)

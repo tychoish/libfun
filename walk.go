@@ -9,6 +9,7 @@ import (
 	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/erc"
 	"github.com/tychoish/fun/ers"
+	"github.com/tychoish/fun/fnx"
 	"github.com/tychoish/fun/ft"
 )
 
@@ -28,10 +29,10 @@ func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, e
 	ec := &erc.Collector{}
 
 	pipe := fun.Blocking(make(chan T))
-	send := pipe.Handler()
+	send := fnx.NewHandler(pipe.Send().Write)
 
-	return pipe.Generator().
-		PreHook(fun.Worker(
+	return fun.MakeStream(fnx.NewFuture(pipe.Receive().Read).
+		PreHook(fnx.Worker(
 			func(ctx context.Context) error {
 				return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
 					if err != nil {
@@ -40,7 +41,7 @@ func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, e
 
 					out, err := fn(p, d)
 					if err != nil {
-						ec.When(!ers.Is(err, fs.SkipDir, fs.SkipAll), err)
+						ec.If(!ers.Is(err, fs.SkipDir, fs.SkipAll), err)
 						return err
 					}
 					if out == nil {
@@ -52,5 +53,5 @@ func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, e
 			Operation(fun.MAKE.ErrorHandlerWithoutTerminating(ec.Push)).
 			PostHook(pipe.Close).
 			Go().Once(),
-		).Stream().WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
+		)).WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
 }

@@ -84,14 +84,14 @@ func FsWalkStream[T any](opts FsWalkOptions, fn func(p string, d fs.DirEntry) (*
 	ec := &erc.Collector{}
 
 	pipe := fun.Blocking(make(chan T))
-	send := pipe.Handler()
+	send := pipe.Send()
 
 	if opts.IgnorePrefix != "" && strings.HasPrefix(opts.Path, opts.IgnorePrefix) && len(opts.Path) > 1 {
 		opts.IgnorePrefix = opts.IgnorePrefix[len(opts.Path)-1:]
 	}
 
-	return pipe.Generator().
-		PreHook(fun.Worker(
+	return fun.MakeStream(fnx.NewFuture(pipe.Receive().Read).
+		PreHook(fnx.Worker(
 			func(ctx context.Context) error {
 				return filepath.WalkDir(opts.Path, func(p string, d fs.DirEntry, err error) error {
 					switch {
@@ -116,7 +116,7 @@ func FsWalkStream[T any](opts FsWalkOptions, fn func(p string, d fs.DirEntry) (*
 						case err == nil && out == nil:
 							return nil
 						case err == nil && out != nil:
-							return send(ctx, *out)
+							return send.Write(ctx, *out)
 						case err != nil && ers.Is(fs.SkipAll, fs.SkipDir, ers.ErrCurrentOpAbort, ers.ErrCurrentOpSkip):
 							return nil
 						default:
@@ -129,7 +129,7 @@ func FsWalkStream[T any](opts FsWalkOptions, fn func(p string, d fs.DirEntry) (*
 			Operation(fun.MAKE.ErrorHandlerWithoutTerminating(ec.Push)).
 			PostHook(pipe.Close).
 			Go().Once(),
-		).Stream().WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
+		)).WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
 }
 
 type SymbolicLinks struct {

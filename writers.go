@@ -5,12 +5,12 @@ import (
 	"io"
 	"strings"
 
-	"github.com/tychoish/fun/intish"
+	"github.com/tychoish/fun/adt"
 )
 
 type SizeReportingWriter struct {
 	out io.Writer
-	len intish.Atomic[int]
+	len adt.AtomicInteger[int]
 }
 
 func NewSizeReportingWriter(base io.Writer) *SizeReportingWriter {

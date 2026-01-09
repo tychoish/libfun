@@ -3,10 +3,10 @@ module github.com/tychoish/libfun
 go 1.24
 
 require (
-	github.com/tychoish/fun v0.13.0
+	github.com/tychoish/fun v0.14.0
 	github.com/tychoish/godmenu v0.2.0
-	github.com/tychoish/grip v0.4.1
-	github.com/tychoish/jasper v0.1.3
+	github.com/tychoish/grip v0.4.2
+	github.com/tychoish/jasper v0.1.4-0.20260108191640-545b863110d2
 )
 
 require (

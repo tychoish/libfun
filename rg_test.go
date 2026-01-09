@@ -29,15 +29,16 @@ func TestRipgrep(t *testing.T) {
 		Directories: true,
 		Unique:      true,
 	}
-	iter := Ripgrep(ctx, jpm, args)
-
+	iter, err := Ripgrep(ctx, jpm, args)
+	if err != nil {
+		t.Error(err)
+	}
 	count := 0
 
-	for iter.Next(ctx) {
+	for val := range iter {
 		count++
-		grip.Info(iter.Value())
+		grip.Info(val)
 	}
-	grip.Error(iter.Close())
 	grip.Info(message.Fields{
 		"path":  args.Path,
 		"count": count,

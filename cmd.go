@@ -5,10 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"iter"
 
-	"github.com/tychoish/fun"
-	"github.com/tychoish/fun/erc"
-	"github.com/tychoish/fun/fnx"
+	"github.com/tychoish/fun/irt"
 	"github.com/tychoish/jasper"
 	"github.com/tychoish/jasper/util"
 )
@@ -23,7 +22,7 @@ func (e *ErrOutput) Error() string {
 	return fmt.Sprintf("cmd: %q; output: %q; error: %q", e.Cmd, e.Out, e.Err)
 }
 
-func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
+func RunCommand(ctx context.Context, cmd string) (iter.Seq[string], error) {
 	var stdoutBuf bytes.Buffer
 	var stderrBuf bytes.Buffer
 
@@ -34,18 +33,13 @@ func RunCommand(ctx context.Context, cmd string) *fun.Stream[string] {
 		SetErrorWriter(util.NewLocalBuffer(&stderrBuf)).
 		Run(ctx)
 	if err != nil {
-		return fun.MakeStream(fnx.MakeFuture(func() (string, error) {
-			return "", erc.Join(err, &ErrOutput{
-				Cmd: cmd, Err: stderrBuf.String(),
-				Out: stdoutBuf.String(),
-			})
-		}))
+		return nil, err
 	}
 
-	return fun.MAKE.Lines(&stdoutBuf)
+	return irt.ReadLines(&stdoutBuf), nil
 }
 
-func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.Stream[string] {
+func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) (iter.Seq[string], error) {
 	var stdoutBuf bytes.Buffer
 	var stderrBuf bytes.Buffer
 
@@ -57,13 +51,8 @@ func RunCommandWithInput(ctx context.Context, cmd string, stdin io.Reader) *fun.
 		SetInput(stdin).
 		Run(ctx)
 	if err != nil {
-		return fun.MakeStream(fnx.MakeFuture(func() (string, error) {
-			return "", erc.Join(err, &ErrOutput{
-				Cmd: cmd, Err: stderrBuf.String(),
-				Out: stdoutBuf.String(),
-			})
-		}))
+		return nil, err
 	}
 
-	return fun.MAKE.Lines(&stdoutBuf)
+	return irt.ReadLines(&stdoutBuf), nil
 }

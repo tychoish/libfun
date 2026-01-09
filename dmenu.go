@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tychoish/fun/dt"
 	"github.com/tychoish/fun/ers"
 	"github.com/tychoish/fun/fnx"
-	"github.com/tychoish/fun/ft"
+	"github.com/tychoish/fun/irt"
+	"github.com/tychoish/fun/stw"
 	"github.com/tychoish/godmenu"
 )
 
@@ -34,7 +34,9 @@ const ErrUndefinedOperation ers.Error = "undefined operation"
 // when executed will call one or more DMenu selections and
 // operations.
 func DMenu(cmd *DMenuCommand) fnx.Worker {
-	cmd.Stage = ft.Default(cmd.Stage, "root")
+	if cmd.Stage == "" {
+		cmd.Stage = "root"
+	}
 
 	return func(ctx context.Context) (err error) {
 		if cmd == nil {
@@ -82,19 +84,21 @@ func (cmd *DMenuCommand) wrap() fnx.Future[*DMenuCommand] {
 			return nil, nil
 		}
 
-		next.Configuration = ft.Default(next.Configuration, cmd.Configuration)
-		next.Stage = ft.DefaultFuture(next.Stage, next.nextID)
+		if next.Configuration == nil {
+			next.Configuration = cmd.Configuration
+		}
+		if next.Stage == "" {
+			next.Stage = next.nextID()
+		}
 
 		return next, nil
 	}
 }
 
 func MenuOperation(ctx context.Context, om map[string]fnx.Worker, conf *godmenu.Flags) error {
-	mp := dt.NewMap(om)
-	keys, err := mp.Keys().Slice(ctx)
-	if err != nil {
-		return err
-	}
+	mp := stw.NewMap(om)
+
+	keys := irt.Collect(mp.Keys())
 
 	selection, err := godmenu.Do(ctx, godmenu.Options{Selections: keys, Flags: conf})
 	if err != nil {

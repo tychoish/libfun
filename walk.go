@@ -1,26 +1,24 @@
 package libfun
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
+	"iter"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/tychoish/fun"
 	"github.com/tychoish/fun/erc"
 	"github.com/tychoish/fun/ers"
-	"github.com/tychoish/fun/fnx"
-	"github.com/tychoish/fun/ft"
+	"github.com/tychoish/fun/stw"
 )
 
 // FileExists provies a function that "reads" correctly with the
 // usually required semantics for "does this file exist."
-func FileExists(path string) bool { return ft.Not(os.IsNotExist(ft.IgnoreFirst(os.Stat(path)))) }
+func FileExists(path string) bool { _, err := os.Stat(path); return !os.IsNotExist(err) }
 
 // WalkDirIterator provides an alternate fun.Iterator-based interface
 // to filepath.WalkDir. The filepath.WalkDir runs in a go routnine,
@@ -30,35 +28,30 @@ func FileExists(path string) bool { return ft.Not(os.IsNotExist(ft.IgnoreFirst(o
 // If the first value of the walk function is nil, then the item is
 // skipped the walk will continue, otherwise--assuming that the error
 // is non-nil, it is de-referenced and returned by the iterator.
-func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, error)) *fun.Stream[T] {
+func WalkDirIterator[T any](path string, fn func(p string, d fs.DirEntry) (*T, error)) (iter.Seq[T], func() error) {
 	ec := &erc.Collector{}
 
-	pipe := fun.Blocking(make(chan T))
-	send := fnx.NewHandler(pipe.Send().Write)
+	return func(yield func(T) bool) {
+		ec.Push(filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
 
-	return fun.MakeStream(fnx.NewFuture(pipe.Receive().Read).
-		PreHook(fnx.Worker(
-			func(ctx context.Context) error {
-				return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
-					if err != nil {
-						return err
-					}
+			out, err := fn(p, d)
+			if err != nil {
+				ec.If(!ers.Is(err, fs.SkipDir, fs.SkipAll, ers.ErrCurrentOpSkip), err)
+				return err
 
-					out, err := fn(p, d)
-					if err != nil {
-						ec.If(!ers.Is(err, fs.SkipDir, fs.SkipAll), err)
-						return err
-					}
-					if out == nil {
-						return nil
-					}
-					return send(ctx, *out)
-				})
-			}).
-			Operation(fun.MAKE.ErrorHandlerWithoutTerminating(ec.Push)).
-			PostHook(pipe.Close).
-			Go().Once(),
-		)).WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
+			}
+			if out == nil {
+				return nil
+			}
+			if !yield(*out) {
+				return fs.SkipAll
+			}
+			return nil
+		}))
+	}, ec.Resolve
 }
 
 type FsWalkOptions struct {
@@ -80,56 +73,51 @@ func hasAnyPrefix(str string, prefixes []string) bool {
 	return false
 }
 
-func FsWalkStream[T any](opts FsWalkOptions, fn func(p string, d fs.DirEntry) (*T, error)) *fun.Stream[T] {
+func FsWalkStream[T any](opts FsWalkOptions, fn func(p string, d fs.DirEntry) (*T, error)) iter.Seq[T] {
 	ec := &erc.Collector{}
-
-	pipe := fun.Blocking(make(chan T))
-	send := pipe.Send()
 
 	if opts.IgnorePrefix != "" && strings.HasPrefix(opts.Path, opts.IgnorePrefix) && len(opts.Path) > 1 {
 		opts.IgnorePrefix = opts.IgnorePrefix[len(opts.Path)-1:]
 	}
 
-	return fun.MakeStream(fnx.NewFuture(pipe.Receive().Read).
-		PreHook(fnx.Worker(
-			func(ctx context.Context) error {
-				return filepath.WalkDir(opts.Path, func(p string, d fs.DirEntry, err error) error {
-					switch {
-					case opts.IgnorePrefix != "" && strings.HasPrefix(p, opts.IgnorePrefix):
-						return nil
-					case opts.IgnoreMode != nil && ft.Ref(opts.IgnoreMode) == d.Type():
-						return nil
-					case err != nil && opts.SkipPermissionErrors && errors.Is(err, fs.ErrPermission):
-						return nil
-					case err != nil && ers.Is(fs.SkipAll, fs.SkipDir, ers.ErrCurrentOpAbort, ers.ErrCurrentOpSkip):
-						return nil
-					case err != nil:
-						ec.Push(err)
-						return err
-					case opts.OnlyMode != nil && ft.Ref(opts.OnlyMode) == d.Type() && err == nil:
-						fallthrough
-					case len(opts.IncludePrefixes) > 0 && hasAnyPrefix(p, opts.IncludePrefixes):
-						fallthrough
-					default:
-						out, err := fn(p, d)
-						switch {
-						case err == nil && out == nil:
-							return nil
-						case err == nil && out != nil:
-							return send.Write(ctx, *out)
-						case err != nil && ers.Is(fs.SkipAll, fs.SkipDir, ers.ErrCurrentOpAbort, ers.ErrCurrentOpSkip):
-							return nil
-						default:
-							ec.Push(err)
-							return err
-						}
+	return func(yield func(T) bool) {
+		ec.Push(filepath.WalkDir(opts.Path, func(p string, d fs.DirEntry, err error) error {
+			switch {
+			case opts.IgnorePrefix != "" && strings.HasPrefix(p, opts.IgnorePrefix):
+				return nil
+			case opts.IgnoreMode != nil && stw.Deref(opts.IgnoreMode) == d.Type():
+				return nil
+			case err != nil && opts.SkipPermissionErrors && errors.Is(err, fs.ErrPermission):
+				return nil
+			case err != nil && ers.Is(fs.SkipAll, fs.SkipDir, ers.ErrCurrentOpAbort, ers.ErrCurrentOpSkip):
+				return nil
+			case err != nil:
+				ec.Push(err)
+				return fs.SkipAll
+			case opts.OnlyMode != nil && stw.Deref(opts.OnlyMode) == d.Type():
+				fallthrough
+			case len(opts.IncludePrefixes) > 0 && hasAnyPrefix(p, opts.IncludePrefixes):
+				fallthrough
+			default:
+				out, err := fn(p, d)
+				switch {
+				case err == nil && out == nil:
+					return nil
+				case err == nil && out != nil:
+					if !yield(*out) {
+						return fs.SkipAll
 					}
-				})
-			}).
-			Operation(fun.MAKE.ErrorHandlerWithoutTerminating(ec.Push)).
-			PostHook(pipe.Close).
-			Go().Once(),
-		)).WithHook(func(st *fun.Stream[T]) { st.AddError(ec.Resolve()) })
+
+					return nil
+				case err != nil && ers.Is(fs.SkipAll, fs.SkipDir, ers.ErrCurrentOpAbort, ers.ErrCurrentOpSkip):
+					return nil
+				default:
+					ec.Push(err)
+					return err
+				}
+			}
+		}))
+	}
 }
 
 type SymbolicLinks struct {
